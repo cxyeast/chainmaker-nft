@@ -1,0 +1,23 @@
+chain_client:
+  chain_id: chain1
+  user_sign_key_file_path: ./crypto-config/node1/admin/admin3/admin3.key
+  crypto:
+    hash: SHA256
+  auth_type: public
+  enable_normal_key: false
+  nodes:
+  - node_addr: 127.0.0.1:12301
+    conn_cnt: 10
+  - node_addr: 127.0.0.1:12302
+    conn_cnt: 10
+  - node_addr: 127.0.0.1:12303
+    conn_cnt: 10
+  - node_addr: 127.0.0.1:12304
+    conn_cnt: 10
+  archive:
+    type: mysql
+    dest: root:123456:localhost:3306
+    secret_key: xxx
+  rpc_client:
+    max_receive_message_size: 16
+    max_send_message_size: 16
