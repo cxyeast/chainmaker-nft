@@ -5,8 +5,8 @@ import assert from "assert";
 describe('web test', function () {
 
     const url_admin_num = "http://localhost:7890/admin/number"
-    let contract_name="NFTAsset" + Math.floor(Math.random()*1000000000000+100).toString()
-    let url_set_contract_name = "http://localhost:7890/contract/name/" + contract_name
+    let contract_name="DEYI_NFTAsset"
+    // let url_set_contract_name = "http://localhost:7890/contract/name/" + contract_name
     const url_get_contract_name = "http://localhost:7890/contract/name"
 
     const test_username_admin1 = "admin1"
@@ -31,7 +31,7 @@ describe('web test', function () {
     const url_update_contract = "http://localhost:7890/contract/update/"
     const url_freeze_contract = "http://localhost:7890/contract/freeze"
     const url_unfreeze_contract = "http://localhost:7890/contract/unfreeze"
-    const url_revoke_contract = "http://localhost:7890/contract/revoke"
+    // const url_revoke_contract = "http://localhost:7890/contract/revoke"
 
     const url_get_asset_name = "http://localhost:7890/contract/asset/name"
     const url_get_asset_tokenuri = "http://localhost:7890/contract/asset/tokenuri"
@@ -41,9 +41,10 @@ describe('web test', function () {
     const url_owner = "http://localhost:7890/contract/asset/owner/"
     
     const url_mint = "http://localhost:7890/contract/asset/mint "
-    const test_tokenid1 = "1"
-    const test_tokenid2 = "2"
-    const test_tokenid3 = "3"
+    const test_tokenid1 = Math.floor(Math.random()*1000000000000+1000000000).toString()
+    const test_tokenid2 = Math.floor(Math.random()*1000000000000+1000000000).toString()
+    const test_tokenid3 = Math.floor(Math.random()*1000000000000+1000000000).toString()
+    
 
     const url_transfer = "http://localhost:7890/contract/asset/transfer"
 
@@ -59,15 +60,15 @@ describe('web test', function () {
         }
     });
 
-    it('set contract names test', async () => {
-        let response = await fetch(url_set_contract_name, {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-            }
-        })
+    it('get contract names test', async () => {
+        // let response = await fetch(url_set_contract_name, {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-type": "application/json; charset=UTF-8"
+        //     }
+        // })
 
-        response = await fetch(url_get_contract_name);
+        let response = await fetch(url_get_contract_name);
         if (response.ok) { // if HTTP-status is 200-299
           // get the response body (the method explained below)
           let json = await response.json();
@@ -484,19 +485,19 @@ describe('web test', function () {
             alert("HTTP-Error: " + response.status);
         }   
 
-        response = await fetch(url_revoke_contract, {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-            }
-        })
-        if (response.ok) { // if HTTP-status is 200-299
-            // get the response body (the method explained below)
-            let json = await response.json();
-            console.log(json)
-        } else {
-            alert("HTTP-Error: " + response.status);
-        }  
+        // response = await fetch(url_revoke_contract, {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-type": "application/json; charset=UTF-8"
+        //     }
+        // })
+        // if (response.ok) { // if HTTP-status is 200-299
+        //     // get the response body (the method explained below)
+        //     let json = await response.json();
+        //     console.log(json)
+        // } else {
+        //     alert("HTTP-Error: " + response.status);
+        // }  
 
     });
 
