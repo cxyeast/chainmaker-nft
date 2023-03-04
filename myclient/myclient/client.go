@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package myclient
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
@@ -522,4 +523,14 @@ func invokeUserContract(contractName, method, txId string,
 	}
 
 	return nil
+}
+
+func SubscribeContractEvent(ctx context.Context, startBlock, endBlock int64,
+	contractName, topic string) (<-chan interface{}, error) {
+
+	if curClient == nil {
+		return nil, fmt.Errorf("client miss")
+	}
+
+	return curClient.SubscribeContractEvent(ctx, startBlock, endBlock, contractName, topic)
 }

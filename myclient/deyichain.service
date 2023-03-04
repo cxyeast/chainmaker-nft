@@ -1,0 +1,16 @@
+[Unit]
+Description=deyichain
+
+[Service]
+KillMode=process
+LimitNOFILE=102400
+Environment=BINPATH=/home/daniel/workspace/deyi/myclient
+WorkingDirectory=/home/daniel/workspace/deyi/myclient
+Type=forking
+
+ExecStart=/usr/bin/bash -c "${BINPATH}/deyichain &"
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

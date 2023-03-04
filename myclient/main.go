@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"myclient/myclient"
 	"net/http"
 	"time"
 
+	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,10 +26,22 @@ const (
 	ADMIN3_NAME        = "admin3"
 	ADMIN4_NAME        = "admin4"
 
-	USER_CRYPTO_PATH = "./crypto-config/users"
-	SDK_CONFIG_PATH  = "./sdk-configs"
-	BYTE_CODE_PATH   = "contract/erc721.7z"
+	USER_CRYPTO_PATH    = "./crypto-config/users"
+	SDK_CONFIG_PATH     = "./sdk-configs"
+	BYTE_CODE_PATH      = "contract/erc721.7z"
+	ASSET_CONTRACT_NAME = "DEYI_NFTAsset"
 )
+
+var (
+	eventTransferCallBackUrl string
+)
+
+type RespContractEventInfo struct {
+	BlockHeight uint64   `json:"blockheight"`
+	TxId        string   `json:"txid"`
+	Topic       string   `json:"topic"`
+	EventData   []string `json:"eventdata"`
+}
 
 type userConfig struct {
 	UserName      string `json:"name"`
@@ -53,6 +70,11 @@ type mintInfo struct {
 type transferInfo struct {
 	Tokenid string `json:"tokenid"`
 	To      string `json:"to"`
+}
+
+type newEventCallbackUrl struct {
+	EventCallbackUrl string `json:"callbackurl"`
+	EventTopic       string `json:"callbackurl"`
 }
 
 func getNumAdminPkUsers(c *gin.Context) {
@@ -286,6 +308,104 @@ func postSetClient(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
+func postSetCallBackUrl(c *gin.Context) {
+
+	var callbackurl newEventCallbackUrl
+
+	if err := c.BindJSON(&callbackurl); err != nil {
+		return
+	}
+
+	eventTransferCallBackUrl = callbackurl.EventCallbackUrl
+	callbackurl.EventTopic = "transfer"
+
+	c.JSON(http.StatusOK, callbackurl)
+}
+
+func eventService(contractname string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c, err := myclient.SubscribeContractEvent(ctx, 0, -1, contractname, "transfer")
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	for {
+		select {
+		case event, ok := <-c:
+			if !ok {
+				fmt.Println("chan is close!")
+				return
+			}
+			if event == nil {
+				log.Fatalln("require not nil")
+			}
+			contractEventInfo, ok := event.(*common.ContractEventInfo)
+			if !ok {
+				log.Fatalln("require true")
+			}
+			fmt.Printf("recv contract event [%d] => %+v\n", contractEventInfo.BlockHeight, contractEventInfo)
+
+			if eventTransferCallBackUrl != "" {
+				callbackdata := RespContractEventInfo{contractEventInfo.BlockHeight, contractEventInfo.TxId, contractEventInfo.Topic, contractEventInfo.EventData}
+				callbackMarshalled, err := json.Marshal(callbackdata)
+				if err != nil {
+					log.Fatalln("impossible to marshall teacher: %s", err)
+				}
+				responseBody := bytes.NewBuffer(callbackMarshalled)
+
+				resp, err := http.Post(eventTransferCallBackUrl, "application/json", responseBody)
+				if err != nil {
+					log.Fatalln("An Error Occured %v", err)
+				}
+				defer resp.Body.Close()
+				//Read the response body
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				sb := string(body)
+				log.Printf(sb)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+
+}
+
+func atService() {
+	// router := gin.Default()
+
+	// router.GET("/admin/number", getNumAdminPkUsers)
+	// router.GET("/contract/name", getAssetContractName)
+	// router.GET("/user/pk", getCurrentPK)
+	// router.GET("/user/addr", getCurrentAddr)
+	// router.GET("/contract/asset/name", getAssetName)
+	// router.GET("/contract/asset/symbol", getAssetSymbol)
+	// router.GET("/contract/asset/tokenuri", getAssetTokenURI)
+	// router.GET("/contract/asset/sender", getAssetSender)
+	// router.GET("/contract/asset/owner/:tokenid", getAssetOwner)
+	// router.GET("/contract/asset/balance/:address", getAssetBalance)
+
+	// router.POST("/user/new/:name", postNewUser)
+	// router.POST("/user/callbackurl", postSetCallBackUrl)
+	// // router.POST("/contract/name/:contractname", postAssetContractName)
+	// router.POST("/client/:username", postSetClient)
+	// router.POST("/contract/build", postBuildAssetContract)
+	// router.POST("/contract/update/:version", postUpdateAssetContract)
+	// router.POST("/contract/freeze", postFreezeAssetContract)
+	// router.POST("/contract/unfreeze", postUnfreezeAssetContract)
+	// // router.POST("/contract/revoke", postRevokeAssetContract)
+	// router.POST("/contract/asset/mint", postMintAsset)
+	// router.POST("/contract/asset/transfer", postTransferAsset)
+
+	// router.Run("localhost:7890")
+}
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -296,8 +416,16 @@ func main() {
 	buildConf(ADMIN2_CRYPTO_PATH, ADMIN2_NAME, SDK_CONFIG_PATH)
 	buildConf(ADMIN3_CRYPTO_PATH, ADMIN3_NAME, SDK_CONFIG_PATH)
 	buildConf(ADMIN4_CRYPTO_PATH, ADMIN4_NAME, SDK_CONFIG_PATH)
+	myclient.SetAssetContractName(ASSET_CONTRACT_NAME)
+	myclient.SetChainClientWithSDKConf(SDK_CONFIG_PATH, ADMIN1_NAME)
 
-	router := gin.Default()
+	go eventService(ASSET_CONTRACT_NAME)
+
+	atService()
+
+	gin.SetMode(gin.ReleaseMode)
+	// router := gin.Default()
+	router := gin.New()
 
 	router.GET("/admin/number", getNumAdminPkUsers)
 	router.GET("/contract/name", getAssetContractName)
@@ -311,13 +439,14 @@ func main() {
 	router.GET("/contract/asset/balance/:address", getAssetBalance)
 
 	router.POST("/user/new/:name", postNewUser)
-	router.POST("/contract/name/:contractname", postAssetContractName)
+	router.POST("/user/callbackurl", postSetCallBackUrl)
+	// router.POST("/contract/name/:contractname", postAssetContractName)
 	router.POST("/client/:username", postSetClient)
 	router.POST("/contract/build", postBuildAssetContract)
 	router.POST("/contract/update/:version", postUpdateAssetContract)
 	router.POST("/contract/freeze", postFreezeAssetContract)
 	router.POST("/contract/unfreeze", postUnfreezeAssetContract)
-	router.POST("/contract/revoke", postRevokeAssetContract)
+	// router.POST("/contract/revoke", postRevokeAssetContract)
 	router.POST("/contract/asset/mint", postMintAsset)
 	router.POST("/contract/asset/transfer", postTransferAsset)
 
