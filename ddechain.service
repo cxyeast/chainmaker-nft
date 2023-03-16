@@ -1,0 +1,16 @@
+[Unit]
+Description=ddechain
+
+[Service]
+KillMode=process
+LimitNOFILE=102400
+Environment=BINPATH=/home/daniel/workspace/dde/myclient
+WorkingDirectory=/home/daniel/workspace/dde/myclient
+Type=forking
+
+ExecStart=/usr/bin/bash -c "${BINPATH}/ddechain &"
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
